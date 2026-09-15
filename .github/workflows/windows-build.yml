@@ -37,11 +37,17 @@ jobs:
       - name: Build installer
         shell: pwsh
         run: |
-          $iscc = @(
+          $candidates = @(
             "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe",
-            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
-          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+            "$env:ChocolateyInstall\bin\ISCC.exe"
+          )
+          $iscc = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+          if (-not $iscc) {
+            $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+          }
           if (-not $iscc) { throw 'Inno Setup compiler was not found.' }
+          Write-Host "Using Inno Setup compiler: $iscc"
           & $iscc installer.iss
           if (!(Test-Path 'installer-output/MusicMetadataResearcher-Setup.exe')) { throw 'Installer was not produced.' }
           Get-Item 'installer-output/MusicMetadataResearcher-Setup.exe' | Format-List Name,Length,FullName
